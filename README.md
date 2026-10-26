@@ -19,21 +19,25 @@ compatibility.
 | **6.12** | Android 16 | `android16-6.12` |
 | **6.18** | Android 17 | `android17-6.18` |
 
-## 设备定向构建（vermagic 钉死）
+## 设备定向构建（可选）
 
-`insmod` 时内核会把 ko 的 `vermagic` 和运行中内核的逐字节比对，不同就 `-ENOEXEC`。
-DDK 自带 kdir 是 `6.1.166-dirty`，所以通用构建在厂商机上通常报
-`invalid module format`。设备构建只改 kdir 的 `UTS_RELEASE`，符号表和 CRC 不动：
+6.1 内核只在 vermagic 的 flag 段做严格比较：模块带 `__versions` 段时（`CONFIG_MODVERSIONS=y`
+编出来的都有），`same_magic()` 会跳过第一段 release，只比
+` SMP preempt mod_unload modversions aarch64`。所以一份 `android14-6.1` 构建能覆盖所有 6.1 设备，
+不需要按 `uname -r` 编。
+
+只有在碰到走完整字符串比较的内核（老内核、裁过 `CONFIG_MODVERSIONS` 的内核）时，
+才用设备定向构建，把 kdir 的 `UTS_RELEASE` 钉成真机 release：
 
 ```sh
-scripts/build-device.sh android14-6.1 6.1.57-android14-11-o-gfc2eac419e6e
+scripts/build-device.sh android14-6.1 6.1.141-android14-11-o-gxxxxxxxxxxx
 ```
 
-CI 走 `.github/workflows/device.yml`（手动触发，填 `uname -r`）。
+CI：`.github/workflows/build.yml`（六个 KMI）、`.github/workflows/device.yml`（手动指定 release）。
 
 已建档设备：
 
-- OnePlus Ace 3 Pro（PJX110 / corvette，android14-6.1）→ [docs/pjx110.md](docs/pjx110.md)
+- OnePlus Ace 3 Pro（PJX110 / corvette，ColorOS 16 / 6.1.141 / android14-6.1）→ [docs/pjx110.md](docs/pjx110.md)
 
 ## Contributors
 

@@ -137,21 +137,22 @@ if [ -f "$MODPATH/kernels/$BEST/droid_lkm_vendor.ko" ]; then
 	cp "$MODPATH/kernels/$BEST/droid_lkm_vendor.ko" "$MODPATH/ko/"
 fi
 
-# vermagic 必须和本机 uname -r 逐字节相同，否则 insmod 直接 ENOEXEC。
-# 设备上没有 strings，所以打包时已把 ko 里的 vermagic 写进 vermagic.txt。
+# 内核只在 flag 段做严格比较（模块带 __versions 段时 release 会被跳过），
+# 所以这里不做逐字节比对，只在主次版本对不上时提醒一句。
+# 设备上没有 strings，vermagic 由打包脚本写进 vermagic.txt。
 VM=$(cat "$MODPATH/kernels/$BEST/vermagic.txt" 2>/dev/null | tr -d '\r')
-VM_REL=${VM% SMP*}
-if [ -n "$VM" ] && [ "$VM_REL" != "$RELEASE" ]; then
-	ui_print "! ------------------------------------------------------------"
-	ui_print "! vermagic mismatch"
-	ui_print "!   this ko  : $VM_REL"
-	ui_print "!   this device: $RELEASE"
-	ui_print "! insmod will fail with invalid module format."
-	ui_print "! rebuild for this release:"
-	ui_print "!   scripts/build-device.sh $BEST $RELEASE"
-	ui_print "! ------------------------------------------------------------"
+if [ -n "$VM" ]; then
+	ui_print "- vermagic : $VM"
+	VM_MM=$(echo "$VM" | sed -n 's/^\([0-9][0-9]*\.[0-9][0-9]*\).*/\1/p')
+	case $RELEASE in
+	"$VM_MM".*) ;;
+	*)
+		ui_print "! kernel major.minor differs: ko=$VM_MM device=$MAJOR_MINOR"
+		ui_print "! this build may not match the running kernel"
+		;;
+	esac
+	cp "$MODPATH/kernels/$BEST/vermagic.txt" "$MODPATH/ko/" 2>/dev/null
 fi
-[ -n "$VM" ] && cp "$MODPATH/kernels/$BEST/vermagic.txt" "$MODPATH/ko/" 2>/dev/null
 
 rm -rf "$MODPATH/kernels"
 

@@ -21,13 +21,13 @@ on:
           - android15-6.6
           - android16-6.12
       kernel_release:
-        description: 'uname -r of the target device (exact)'
+        description: 'uname -r (only needed when the kernel compares the full vermagic)'
         required: true
-        default: '6.1.57-android14-11-o-gfc2eac419e6e'
+        default: '6.1.141-android14-11-o-g'
       version:
         description: 'Module version string'
         required: false
-        default: 'v1.0.5-pjx110'
+        default: 'v1.0.6-pjx110'
       layout_fallback:
         description: 'Enable syscall slot fallback (only if hooks fail)'
         required: false
