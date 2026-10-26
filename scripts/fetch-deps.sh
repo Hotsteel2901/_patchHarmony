@@ -8,9 +8,10 @@ cd "$(dirname "$0")/.."
 
 SDKREV=$(cat .sdk-version)
 
+# HTTPS 默认即可匿名克隆；要走 SSH 的机器把 KMSDK_URL 换成 git@ 形式
 if [ ! -d .sdk/.git ]; then
 	rm -rf .sdk
-	git clone git@github.com:Dere3046/KMSDK.git .sdk
+	git clone "${KMSDK_URL:-https://github.com/Dere3046/KMSDK.git}" .sdk
 fi
 
 case $SDKREV in

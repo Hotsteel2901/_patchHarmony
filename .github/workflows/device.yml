@@ -1,0 +1,81 @@
+name: Build device module
+
+# 按真机 uname -r 编一个 vermagic 精确匹配的 ko，并打出 KernelSU 安装包。
+# 触发方式：Actions -> Build device module -> Run workflow
+#   kmi            目标 KMI，PJX110 选 android14-6.1
+#   kernel_release 真机 `uname -r` 的完整输出，例如
+#                  6.1.57-android14-11-o-gfc2eac419e6e
+on:
+  workflow_dispatch:
+    inputs:
+      kmi:
+        description: 'Target KMI'
+        required: true
+        default: android14-6.1
+        type: choice
+        options:
+          - android13-5.10
+          - android13-5.15
+          - android14-5.15
+          - android14-6.1
+          - android15-6.6
+          - android16-6.12
+      kernel_release:
+        description: 'uname -r of the target device (exact)'
+        required: true
+        default: '6.1.57-android14-11-o-gfc2eac419e6e'
+      version:
+        description: 'Module version string'
+        required: false
+        default: 'v1.0.5-pjx110'
+      layout_fallback:
+        description: 'Enable syscall slot fallback (only if hooks fail)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch deps
+        run: |
+          chmod +x scripts/*.sh
+          scripts/fetch-deps.sh
+
+      - name: Build ${{ inputs.kmi }} for ${{ inputs.kernel_release }}
+        env:
+          REL: ${{ inputs.kernel_release }}
+          TARGET: ${{ inputs.kmi }}
+          FALLBACK: ${{ inputs.layout_fallback }}
+        run: |
+          if [ "$FALLBACK" = "true" ]; then
+            export DROID_LKM_LAYOUT_FALLBACK=1
+          fi
+          sh scripts/build-device.sh "$TARGET" "$REL"
+
+      - name: Package module zip
+        run: |
+          sh scripts/package-module.sh "${{ inputs.kmi }}" --version "${{ inputs.version }}" --code "${{ github.run_number }}"
+          ls -lh dist
+
+      - name: Summarize
+        run: |
+          {
+            echo "### ${{ inputs.kmi }} / ${{ inputs.kernel_release }}"
+            echo '```'
+            strings -a "out/${{ inputs.kmi }}/droid_lkm.ko" | grep -a '^vermagic=' || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: droid_lkm-${{ inputs.kmi }}-${{ inputs.version }}
+          path: |
+            out/${{ inputs.kmi }}/droid_lkm.ko
+            dist/*.zip
+          if-no-files-found: error

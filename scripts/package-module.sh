@@ -89,6 +89,13 @@ stage() { # <kmi>...
 		}
 		mkdir -p "$STAGE/kernels/$k"
 		cp "$ROOT/out/$k/droid_lkm.ko" "$STAGE/kernels/$k/"
+		# 把 ko 的 vermagic 落到文本里：安装脚本在设备上没有 strings/grep -a，
+		# 只能靠这个文件判断本机 release 是否和 ko 一致
+		vm=$(strings -a "$ROOT/out/$k/droid_lkm.ko" | grep -a '^vermagic=' | head -n1 | cut -d= -f2-)
+		if [ -n "$vm" ]; then
+			echo "$vm" > "$STAGE/kernels/$k/vermagic.txt"
+			echo "  $k vermagic: $vm"
+		fi
 		# compat 只有部分 KMI 会构建出来（取决于目标内核有没有 nop_mnt_idmap）
 		if [ -f "$ROOT/out/$k/droid_lkm_vendor.ko" ]; then
 			cp "$ROOT/out/$k/droid_lkm_vendor.ko" "$STAGE/kernels/$k/"

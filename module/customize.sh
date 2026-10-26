@@ -136,6 +136,23 @@ cp "$MODPATH/kernels/$BEST/droid_lkm.ko" "$MODPATH/ko/" || abort "! cannot copy 
 if [ -f "$MODPATH/kernels/$BEST/droid_lkm_vendor.ko" ]; then
 	cp "$MODPATH/kernels/$BEST/droid_lkm_vendor.ko" "$MODPATH/ko/"
 fi
+
+# vermagic 必须和本机 uname -r 逐字节相同，否则 insmod 直接 ENOEXEC。
+# 设备上没有 strings，所以打包时已把 ko 里的 vermagic 写进 vermagic.txt。
+VM=$(cat "$MODPATH/kernels/$BEST/vermagic.txt" 2>/dev/null | tr -d '\r')
+VM_REL=${VM% SMP*}
+if [ -n "$VM" ] && [ "$VM_REL" != "$RELEASE" ]; then
+	ui_print "! ------------------------------------------------------------"
+	ui_print "! vermagic mismatch"
+	ui_print "!   this ko  : $VM_REL"
+	ui_print "!   this device: $RELEASE"
+	ui_print "! insmod will fail with invalid module format."
+	ui_print "! rebuild for this release:"
+	ui_print "!   scripts/build-device.sh $BEST $RELEASE"
+	ui_print "! ------------------------------------------------------------"
+fi
+[ -n "$VM" ] && cp "$MODPATH/kernels/$BEST/vermagic.txt" "$MODPATH/ko/" 2>/dev/null
+
 rm -rf "$MODPATH/kernels"
 
 # 不带旧版本的状态
