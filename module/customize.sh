@@ -136,6 +136,10 @@ cp "$MODPATH/kernels/$BEST/droid_lkm.ko" "$MODPATH/ko/" || abort "! cannot copy 
 if [ -f "$MODPATH/kernels/$BEST/droid_lkm_vendor.ko" ]; then
 	cp "$MODPATH/kernels/$BEST/droid_lkm_vendor.ko" "$MODPATH/ko/"
 fi
+if [ -f "$MODPATH/kernels/$BEST/droid_lkm_misc.ko" ]; then
+	cp "$MODPATH/kernels/$BEST/droid_lkm_misc.ko" "$MODPATH/ko/"
+	ui_print "- extras  : devtmpfs / userns / xt"
+fi
 
 # 内核只在 flag 段做严格比较（模块带 __versions 段时 release 会被跳过），
 # 所以这里不做逐字节比对，只在主次版本对不上时提醒一句。

@@ -159,6 +159,10 @@ if [ "$1" = "status" ]; then
 	echo "kmi=$(conf kmi -)"
 	if loaded droid_lkm; then echo "loaded=1"; else echo "loaded=0"; fi
 	if loaded droid_lkm_vendor; then echo "compat=1"; else echo "compat=0"; fi
+	if loaded droid_lkm_misc; then echo "misc=1"; else echo "misc=0"; fi
+	if [ -r /proc/droid_lkm_misc/status ]; then
+		sed 's/^/ext./' /proc/droid_lkm_misc/status 2>/dev/null
+	fi
 	case "$(conf compat off)" in
 	on | 1 | yes | true) cw=on ;;
 	auto) [ "$(conf oplus 0)" = 1 ] && cw=on || cw=off ;;
@@ -240,6 +244,31 @@ else
 fi
 
 [ "$core_ok" = 1 ] || exit 1
+
+# 附加模块：补内核没编的 devtmpfs / user namespace / xt targets。
+# 依赖 droid_lkm 导出的 ns kind 接口，必须排在核心模块之后。
+MISC=$MODDIR/ko/droid_lkm_misc.ko
+if [ "$(bool misc 1)" != 1 ]; then
+	ph_log "misc: off"
+elif [ ! -f "$MISC" ]; then
+	ph_log "misc: no build in this package"
+elif loaded droid_lkm_misc; then
+	ph_log "droid_lkm_misc already loaded"
+else
+	ph_log "loading droid_lkm_misc.ko"
+	guarded_insmod "$MISC" \
+		"devtmpfs=$(bool misc_devtmpfs 1)" \
+		"userns=$(bool misc_userns 1)" \
+		"xt=$(bool misc_xt 0)" \
+		"verbose=$(bool verbose 0)"
+	rc=$?
+	if [ "$rc" -eq 0 ] && loaded droid_lkm_misc; then
+		ph_log "droid_lkm_misc loaded"
+	else
+		ph_log "droid_lkm_misc failed (rc=$rc)"
+		dmesg 2>/dev/null | tail -n 12 >> "$LOG"
+	fi
+fi
 
 # 兼容模块：安装时已按指纹把 compat 解析成 on/off
 COMPAT=$MODDIR/ko/droid_lkm_vendor.ko

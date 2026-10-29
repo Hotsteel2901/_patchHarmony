@@ -59,6 +59,7 @@
 #include <uapi/linux/mount.h>
 #include <linux/stat.h>
 #include <linux/mnt_idmapping.h>
+#include <linux/version.h>
 
 #include "misc.h"
 #include "misc_ksym.h"
@@ -101,6 +102,19 @@ struct droid_lkm_devtmpfs_ksym {
 };
 
 static struct droid_lkm_devtmpfs_ksym droid_lkm_devtmpfs_ks;
+
+/*
+ * The vfs helpers took a struct user_namespace * as their idmap argument up to
+ * 6.1 and struct mnt_idmap * from 6.2 on. This device kernel is 6.1, where the
+ * initial user namespace is what nop_mnt_idmap means, and the symbol itself
+ * does not exist. Resolved by name like everything else so no link reference is
+ * left behind.
+ */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 2, 0)
+static void *droid_lkm_devtmpfs_idmap;
+#else
+#define droid_lkm_devtmpfs_idmap (&nop_mnt_idmap)
+#endif
 
 static struct task_struct *droid_lkm_devtmpfs_thread;
 static struct vfsmount *droid_lkm_devtmpfs_mnt;
@@ -303,7 +317,7 @@ static int droid_lkm_devtmpfs_parent(const char *name, struct dentry **parent_ou
 		}
 
 		if (d_really_is_negative(next)) {
-			err = droid_lkm_devtmpfs_ks.vfs_mkdir(&nop_mnt_idmap,
+			err = droid_lkm_devtmpfs_ks.vfs_mkdir(droid_lkm_devtmpfs_idmap,
 							      d_inode(parent), next,
 							      0755);
 			if (!err)
@@ -345,7 +359,7 @@ static int droid_lkm_devtmpfs_handle_create(const char *nodename, umode_t mode,
 		goto out_unlock;
 	}
 
-	err = droid_lkm_devtmpfs_ks.vfs_mknod(&nop_mnt_idmap, d_inode(parent), dentry,
+	err = droid_lkm_devtmpfs_ks.vfs_mknod(droid_lkm_devtmpfs_idmap, d_inode(parent), dentry,
 					      mode, dev->devt);
 	if (!err) {
 		struct iattr newattrs;
@@ -356,7 +370,7 @@ static int droid_lkm_devtmpfs_handle_create(const char *nodename, umode_t mode,
 		newattrs.ia_valid = ATTR_MODE | ATTR_UID | ATTR_GID;
 		/* notify_change wants the affected inode locked by its caller */
 		inode_lock(d_inode(dentry));
-		droid_lkm_devtmpfs_ks.notify_change(&nop_mnt_idmap, dentry, &newattrs,
+		droid_lkm_devtmpfs_ks.notify_change(droid_lkm_devtmpfs_idmap, dentry, &newattrs,
 						    NULL);
 		inode_unlock(d_inode(dentry));
 
@@ -388,7 +402,7 @@ static void droid_lkm_devtmpfs_prune(struct dentry *dir)
 
 		up = droid_lkm_devtmpfs_ks.dget_parent(dir);
 		inode_lock_nested(d_inode(up), I_MUTEX_PARENT);
-		err = droid_lkm_devtmpfs_ks.vfs_rmdir(&nop_mnt_idmap, d_inode(up), dir);
+		err = droid_lkm_devtmpfs_ks.vfs_rmdir(droid_lkm_devtmpfs_idmap, d_inode(up), dir);
 		inode_unlock(d_inode(up));
 
 		dput(dir);
@@ -459,11 +473,11 @@ static int droid_lkm_devtmpfs_handle_remove(const char *nodename, struct device 
 			newattrs.ia_mode = stat.mode & ~0777;
 			newattrs.ia_valid = ATTR_UID | ATTR_GID | ATTR_MODE;
 			inode_lock(d_inode(dentry));
-			droid_lkm_devtmpfs_ks.notify_change(&nop_mnt_idmap, dentry,
+			droid_lkm_devtmpfs_ks.notify_change(droid_lkm_devtmpfs_idmap, dentry,
 							    &newattrs, NULL);
 			inode_unlock(d_inode(dentry));
 
-			err = droid_lkm_devtmpfs_ks.vfs_unlink(&nop_mnt_idmap,
+			err = droid_lkm_devtmpfs_ks.vfs_unlink(droid_lkm_devtmpfs_idmap,
 							       d_inode(parent), dentry,
 							       NULL);
 			if (!err || err == -ENOENT) {

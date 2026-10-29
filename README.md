@@ -19,6 +19,26 @@ compatibility.
 | **6.12** | Android 16 | `android16-6.12` |
 | **6.18** | Android 17 | `android17-6.18` |
 
+## 附加模块：droid_lkm_misc.ko
+
+主模块补 namespace / IPC 之后，`droidspaces check` 还会剩几行黄。`droid_lkm_misc.ko`
+就是补这些的：devtmpfs、user namespace、若干 netfilter xt target。
+
+上游的 `src/misc/` 是半成品（Makefile 里那行是注释掉的，`DLM_OBJS` 还引用着不存在的
+`userns_ids.c` 和几十个 `xt_*.c`，`DLKM_OPT` 又挂在 6.5+ 的 `nop_mnt_idmap` 上）。
+本仓库把它接到 6.1：
+
+| 改动 | 原因 |
+| :--- | :--- |
+| `MISC_OPT` 与 `DLKM_OPT` 拆开 | misc 不依赖 vendor 修复，不该被 `nop_mnt_idmap` 挡住 |
+| `DLM_OBJS` 只留真实存在的文件 | 其余源文件上游没写 |
+| `devtmpfs.c` 加 6.1 分支 | 6.2 起 VFS 辅助函数的 idmap 参数从 `user_namespace *` 变成 `mnt_idmap *`，6.1 传 `init_user_ns` |
+| `misc_ksym.c` 的 `nop_mnt_idmap` 改成 6.2+ 必需 | 6.1 没有这个符号，原样会把整个 init 拖垮 |
+
+加载顺序 `droid_lkm` → `droid_lkm_misc`。模块参数 `devtmpfs` / `userns` / `xt`，
+对应 `config.conf` 里的 `misc_devtmpfs` / `misc_userns` / `misc_xt`，`misc=0` 可整块关掉。
+运行状态看 `/proc/droid_lkm_misc/status`。
+
 ## 设备定向构建（可选）
 
 6.1 内核只在 vermagic 的 flag 段做严格比较：模块带 `__versions` 段时（`CONFIG_MODVERSIONS=y`

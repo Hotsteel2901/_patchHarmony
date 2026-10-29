@@ -100,6 +100,11 @@ stage() { # <kmi>...
 		if [ -f "$ROOT/out/$k/droid_lkm_vendor.ko" ]; then
 			cp "$ROOT/out/$k/droid_lkm_vendor.ko" "$STAGE/kernels/$k/"
 		fi
+		# misc: devtmpfs / user namespace / xt targets，内核没编的补上
+		if [ -f "$ROOT/out/$k/droid_lkm_misc.ko" ]; then
+			cp "$ROOT/out/$k/droid_lkm_misc.ko" "$STAGE/kernels/$k/"
+			echo "  $k misc    : $(du -h "$ROOT/out/$k/droid_lkm_misc.ko" | cut -f1)"
+		fi
 	done
 
 	prop_set "$STAGE/module.prop" version "$VERSION"

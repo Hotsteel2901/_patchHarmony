@@ -1,6 +1,6 @@
 id=phdroid
 name=phDroid
-version=v1.0.4
-versionCode=5
+version=v1.1.0
+versionCode=8
 author=XiYueSauce
-description=patchHarmony wrapper that provides Droidspaces LKM support on stock GKI kernels: fake pid/ipc namespaces, SysV IPC and POSIX mqueue from an out-of-tree module.
+description=patchHarmony wrapper that provides Droidspaces LKM support on stock GKI kernels: fake pid/ipc/user namespaces, SysV IPC, POSIX mqueue and devtmpfs from out-of-tree modules.

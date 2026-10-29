@@ -3,6 +3,8 @@
  * Copyright (C) 2026 dere3046
  */
 
+#include <linux/version.h>
+
 #include "misc.h"
 #include "misc_ksym.h"
 
@@ -58,11 +60,16 @@ int droid_lkm_misc_ksym_init(void)
 		droid_lkm_misc_thunk_missing = true;
 	}
 
-	droid_lkm_misc_ks.nop_mnt_idmap = (typeof(droid_lkm_misc_ks.nop_mnt_idmap))
-		droid_lkm_misc_resolve("nop_mnt_idmap");
-	if (!droid_lkm_misc_ks.nop_mnt_idmap) {
-		droid_lkm_misc_warn("thunk missing: nop_mnt_idmap\n");
-		droid_lkm_misc_thunk_missing = true;
+	/* 6.2 and later only: before that the vfs helpers take init_user_ns,
+	 * which the devtmpfs port resolves on its own */
+	if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 2, 0)) {
+		droid_lkm_misc_ks.nop_mnt_idmap =
+			(typeof(droid_lkm_misc_ks.nop_mnt_idmap))
+				droid_lkm_misc_resolve("nop_mnt_idmap");
+		if (!droid_lkm_misc_ks.nop_mnt_idmap) {
+			droid_lkm_misc_warn("thunk missing: nop_mnt_idmap\n");
+			droid_lkm_misc_thunk_missing = true;
+		}
 	}
 
 	/* exported by droid_lkm.ko, absent only means the ns kind cannot be offered */
